@@ -51,7 +51,7 @@ class Trainer:
         if self.opt.use_stereo:
             self.opt.frame_ids.append("s")
 
-        self.models["encoder"] = networks.ResnetEncoder(
+        self.models["encoder"] = networks.ConvNeXtEncoder(
             self.opt.num_layers, self.opt.weights_init == "pretrained")
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
@@ -63,7 +63,7 @@ class Trainer:
 
         if self.use_pose_net:
             if self.opt.pose_model_type == "separate_resnet":
-                self.models["pose_encoder"] = networks.ResnetEncoder(
+                self.models["pose_encoder"] = networks.ConvNeXtEncoder(
                     self.opt.num_layers,
                     self.opt.weights_init == "pretrained",
                     num_input_images=self.num_pose_frames)
@@ -106,6 +106,7 @@ class Trainer:
         if self.opt.load_weights_folder is not None:
             self.load_model()
 
+        print(f"Encoder is {type(self.models['encoder']).__name__}")
         print("Training model named:\n  ", self.opt.model_name)
         print("Models and tensorboard events files are saved to:\n  ", self.opt.log_dir)
         print("Training is using:\n  ", self.device)
@@ -129,13 +130,13 @@ class Trainer:
             self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
-            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
+            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True, prefetch_factor=8)
         val_dataset = self.dataset(
             self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)
         self.val_loader = DataLoader(
             val_dataset, self.opt.batch_size, True,
-            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
+            num_workers=self.opt.num_workers, pin_memory=True, drop_last=True, prefetch_factor=8)
         self.val_iter = iter(self.val_loader)
 
         self.writers = {}
@@ -322,7 +323,7 @@ class Trainer:
         """
         self.set_eval()
         try:
-            inputs = self.val_iter.next()
+            inputs = next(self.val_iter)
         except StopIteration:
             self.val_iter = iter(self.val_loader)
             inputs = self.val_iter.next()
