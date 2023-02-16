@@ -19,7 +19,7 @@ import json
 
 from utils import *
 from kitti_utils import *
-from layers import *
+from layers_v2 import *
 
 import datasets
 import networks
@@ -56,7 +56,7 @@ class Trainer:
         self.models["encoder"].to(self.device)
         self.parameters_to_train += list(self.models["encoder"].parameters())
 
-        self.models["depth"] = networks.DepthDecoder(
+        self.models["depth"] = networks.DepthDecoderV2(
             self.models["encoder"].num_ch_enc, self.opt.scales)
         self.models["depth"].to(self.device)
         self.parameters_to_train += list(self.models["depth"].parameters())
@@ -93,7 +93,7 @@ class Trainer:
 
             # Our implementation of the predictive masking baseline has the the same architecture
             # as our depth decoder. We predict a separate mask for each source frame.
-            self.models["predictive_mask"] = networks.DepthDecoder(
+            self.models["predictive_mask"] = networks.DepthDecoderV2(
                 self.models["encoder"].num_ch_enc, self.opt.scales,
                 num_output_channels=(len(self.opt.frame_ids) - 1))
             self.models["predictive_mask"].to(self.device)
